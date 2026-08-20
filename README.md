@@ -29,9 +29,9 @@ What happened since: software is back, and this time it arrives as a game.
 
 The HISCORE protocol and registry solves multiple new problems:
 
-Hiscore hunting means pure joy for players.
+Hiscore hunting means **pure joy for players**.
 
-Building games is pure joy for creators.
+Building games is **pure joy for creators**.
 
 ## For players: get fame & find games!
 
@@ -41,9 +41,9 @@ Who will ever know that you were there?
 
 Noone.
 
-Hiscore protocol and the global registry change that: your hiscores can finally live forever.
+Hiscore protocol and the global registry change that: **your hiscores can finally live forever.**
 
-Long after the server is gone. Your score persists.
+**Long after the server is gone. Your score persists.**
 
 "I was here."
 
@@ -53,7 +53,7 @@ Long after the server is gone. Your score persists.
 
 "And we love hiscores!"
 
-Players get fame. Games get players.
+**Players get fame. Games get players.**
 
 ## For creators: Games get players!
 
@@ -71,18 +71,17 @@ Noone.
 
 Hiscore protocol and the global registry change that: 
 
-your games get seen and played by real players who compete for highscores in YOUR GAME.
+**your games get seen and played by real players who compete for highscores in YOUR GAME.**
 
 Now isn't awesome?
 
 We are turning the world into one giant, playful party for all the players out there!
 
-For players: discover new games, beat highscores and live in a global hall of fame forever!
+For players: **discover new games, beat highscores and live in a global hall of fame forever!**
 
-For creators: make your game know to the world and get players who play your game!
+For creators: **make your game know to the world and get players who play your game!**
 
 All you need to do is to implement the global highscore protocol.
-
 
 ## Change the spec
 
