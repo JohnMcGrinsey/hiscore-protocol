@@ -29,6 +29,8 @@ Hiscore hunting means pure joy for players.
 
 Building games is pure joy for creators.
 
+## For players: get fame & find games!
+
 Imagine this: you stumble on a new game by an unknown vibecoder in the morning and beat the highscore. Who will ever know that you were there?
 
 Noone.
@@ -46,6 +48,8 @@ Long after the server is gone. Your score persists.
 "And we love hiscores!"
 
 Players get fame. Games get players.
+
+## For creators: Games get players!
 
 The other side of the coin: game builders, vibecoders, indiehackers all love to create new games.
 
