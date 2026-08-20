@@ -1,0 +1,314 @@
+HISCORE/1.2
+===========
+The global highscore protocol.
+This file is the specification.
+
+Reference registry: https://gamesareeatingtheworld.com
+This file:          https://gamesareeatingtheworld.com/hiscore.txt
+Schema:             https://gamesareeatingtheworld.com/hiscore.schema.json
+Public history:     https://github.com/JohnMcGrinsey/hiscore-protocol
+
+For the agent adding a leaderboard to a game: everything needed is on this
+page. Fetch it. Follow it. Do not invent fields.
+
+One score. Any game. One public board.
+The player needs no account. The game needs no SDK and no build step.
+
+Copies of this document may live anywhere. They are not a second root.
+The reference registry is gamesareeatingtheworld.com.
+
+
+CLAIM THE GAME
+  POST https://gamesareeatingtheworld.com/api/games/claim
+  Content-Type: application/json
+  {"id":"your-game-id",
+   "title":"Your Game",
+   "description":"One sentence. This is what a player reads before clicking.",
+   "url":"https://where-the-game-actually-runs/",
+   "author":"you"}
+
+  id: lowercase a-z 0-9 and dashes, 3 to 40 characters.
+  200 {"ok":true,"id":"...","token":"hiscore-..."}
+  409 taken: that id is verified. Pick another.
+
+  Put the token in the HTML at the url you gave:
+    <meta name="hiscore-claim" content="THE_TOKEN">
+  A comment works. If the page is built only in JavaScript, serve the
+  token at /.well-known/hiscore. The registry reads HTML as text. It
+  does not run your scripts.
+
+  Then:
+  POST https://gamesareeatingtheworld.com/api/games/verify
+  {"id":"your-game-id"}
+
+  200 {"ok":true,"verified":true,
+       "board":"https://gamesareeatingtheworld.com/board/your-game-id",
+       "setup_url":"https://gamesareeatingtheworld.com/account/setup?t=own_..."}
+  422 token_not_found: the response lists the addresses that were checked.
+  Scores are rejected with 404 unknown_key until this succeeds.
+
+  PRINT setup_url for the human. They sign in. Never invent a password.
+  Never write a password into the game. The url is one-time.
+  You may remove the token after verify. The id stays yours.
+
+
+TWO WAYS TO SEND
+  OPEN (default)
+    The browser posts the score. Two lines of HTML. Label: submitted.
+    Forgeable. We say so.
+
+  SIGNED (use this when the project has or can have a server)
+    The game's server signs the score. Label: signed.
+    If you can add one function file in under ten minutes, do SIGNED.
+    Do not ask the human which way. Read the repo and decide.
+
+
+SESSION (optional, worth it)
+  POST https://gamesareeatingtheworld.com/api/scores/session
+  {"game":"YOUR_ID"}
+  200 {"ok":true,"session":"s_...","at":"...","expires_in":43200,
+       "challenge":"fd9d214de8a1bf63","difficulty":18}
+
+  Open once when the game loads. Send "session" with every score.
+  The session measures time on the page. GS.reset() starts the run clock.
+  session_ms is time since the session opened, not the length of one run.
+
+  Solve any n where sha256(challenge + ":" + n) begins with "difficulty"
+  zero bits. Send it as "pow" on the first score. gs.js does this in
+  the background, time-sliced, so it does not drop a frame.
+
+  Without a solved session: 5 scores per minute per IP.
+  With it: 20. A school network notices the small number. A single
+  player does not.
+
+  With a session the registry stamps start and duration. run_ms from
+  the client is then a claim next to a measurement. It is not
+  authentication. It makes a fake record cost wall-clock time.
+
+
+SUBMIT
+  A) Browser snippet
+     <script src="https://gamesareeatingtheworld.com/gs.js"
+             data-key="YOUR_ID" data-version="1.4.0"></script>
+     GS.submit(score)
+     GS.submit(score, { show: false })
+     GS.submit(score, { mode: "level-3/hard", player: "ada" })
+     Automatic submits must use { show: false }.
+
+  B) HTTP
+     POST https://gamesareeatingtheworld.com/api/scores
+     Content-Type: application/json
+     {"game":"YOUR_ID","player":"ada","score":12345,"version":"1.4.0"}
+
+
+SIGNED SCORES
+  Generate an ed25519 key pair. Send only the public part.
+
+  During verify:
+    POST /api/games/verify
+    {"id":"your-game-id","public_key":"<base64url of 32 raw bytes, or PEM>"}
+
+  Later:
+    POST /api/games/key  {"id":"...","public_key":"..."}
+    200 or {"ok":false,"error":"proof_required","token":"hiscore-..."}
+    Put that token on the game page, POST again with "proof":"<token>".
+
+  Sign every score:
+    t    = current unix seconds
+    body = the exact JSON string you send
+    sig  = ed25519(privateKey, t + "." + body)   base64url
+    header: X-HISCORE-Signature: t=<t>,v1=<sig>
+
+  Sign the raw body, byte for byte. Do not re-serialise after signing.
+  Once a public key is on file, unsigned scores for that id return
+  401 signature_required.
+
+  NEVER put the private key in a browser, a bundle, or a client config.
+  A signed request with an Origin header is rejected as 400 key_in_browser
+  and the key is marked leaked. Rotate at /api/games/key.
+
+  401 bad_signature_header
+  401 bad_signature
+  401 signature_expired     (5 min tolerance)
+  409 replayed              (each signature is valid once)
+  400 key_in_browser
+
+  "signed" proves the channel. It does not prove the number. If your
+  server signs whatever a browser sends, the lie is signed.
+
+
+IDENTITY
+  A player name has two parts:
+
+      RONAN  THE SCORER
+      ^^^^^  ^^^^^^^^^^
+      name   surname
+
+  The name is chosen and shown large. The surname makes it unique.
+  Surnames are words, never digits. Twenty people can be RONAN.
+  Nobody has to become RONAN_2847. Both parts are always shown.
+
+  The surname can carry provenance of identity:
+
+      JOHN OF MCGRINSEY.COM
+      JAMJI OF GAMESAREEATINGTHEWORLD.COM
+      JAMJI THE HISCOREHUNTER
+
+  Send "player" as the name only. The registry attaches the surname.
+
+  Without a secret you are a guest under that name. Always allowed.
+  THE NAME IS NEVER RESERVED. ONLY THE COMBINATION IS.
+
+      player=ronan, no secret    ->  RONAN, a guest
+      player=ronan, secret A     ->  RONAN THE SCORER
+      player=ronan, secret B     ->  RONAN OF THE LAST FRAME
+
+  POST /api/scores/name   {"player":"ada"}
+  POST /api/scores/name   {"player":"ada","surname":"THE QUICK"}
+  200 {"ok":true,"player":"ada","surname":"THE QUICK","secret":"hsn_..."}
+  409 identity_taken: that combination exists. The name is still free.
+
+  Recognise an identity with header X-HISCORE-Player: hsn_...
+  403 bad_player_secret: no match. Omit the header and you are a guest
+  under the same name.
+
+  Guest scores stay guest scores. They never move onto an identity that
+  later claims the name.
+
+  A player with an account cannot hand you their secret (it lives on
+  the registry origin). They confirm there and come back with a
+  per-game token:
+
+    https://gamesareeatingtheworld.com/connect
+      ?game=<id>&return=<https url on the game origin>
+    localhost is allowed. They return with #hiscore_player=<token>.
+    Read it, drop it from the address bar, send it as X-HISCORE-Player.
+    The token never expires on its own. The player can cut it.
+    With a token the identity overwrites "player".
+
+
+ONE BOARD
+  COMPARISON KEY = game + mode + rules + unit + dir
+
+  Two scores rank against each other only when all five match.
+  "version" is not in the key. It is provenance of the build.
+  A new ruleset uses "rules", not a build number.
+
+
+FIELDS
+  game     required  string   the claimed id
+  player   required  string   max 24, letters/digits/space/_-. only.
+                              The NAME only.
+  score    required  number   absolute value under 1e12
+  mode     optional  string   max 64, slash-separated
+  unit     optional  enum     points | ms | s | count     default points
+  dir      optional  enum     high | low                  default high
+  version  optional  string   max 32, YOUR game build. Send this.
+  rules    optional  string   max 32, the ruleset, not the build
+  at       optional  string   ISO 8601 UTC. Ignored if future or
+                              more than a year old
+  run_ms   optional  number   duration you claim, milliseconds
+  session  optional  string   from /api/scores/session. Send this.
+  run_id   optional  string   max 64, your id for this run. Same id
+                              again returns the same record.
+  pow      optional  string   solution to the session challenge
+
+  Unknown fields are ignored, not rejected.
+  Do not send provenance. The server sets it.
+
+
+RESPONSE
+  200 {"ok":true,"id":4711,"rank":7,"flagged":false,"dir":"high",
+       "unit":"points","provenance":"submitted","version":"1.4.0",
+       "share":"https://gamesareeatingtheworld.com/r/4711",
+       "timed":true,"session_ms":184203}
+      rank is null when flagged is true.
+      share is null when flagged is true.
+
+  400 bad_score
+  403 bad_player_secret
+  404 unknown_key
+  409 identity_taken
+  409 replayed
+  429 too_many
+        open    20 / min / IP, or 5 without a solved session
+        signed  600 / min / game (not per IP)
+
+  flagged:true: stored, not shown. Triggers: run under 500 ms, run_ms
+  longer than the session, or a value over 100x the board median.
+  Do not retry. Do not tell the player they placed.
+
+
+BOARD
+  https://gamesareeatingtheworld.com/board/your-game-id
+  Live the moment you verify.
+
+  Public index: https://gamesareeatingtheworld.com/board
+  A board joins the index after 3 different people have scored.
+  Until then the page works and carries noindex.
+
+  GET /api/scores?key=YOUR_ID&limit=20
+  GET /api/scores?key=YOUR_ID&tier=verified
+  GET /api/scores/global
+  key is the game id. No auth to read. CORS is open. Data is exportable.
+
+
+TRUST
+  provenance is set by the server:
+    submitted   from a browser
+    signed      from the game's server
+    measured    from a runtime the registry operates
+    imported    taken from another board, with a source
+    verified    a human looked at it
+
+  Boards filter by tier. Anyone can post a number. We label how it
+  arrived. We do not claim to have solved forgery.
+
+  Every score stores arrival time, a salted hash of the sender, the
+  session, and how long that session had been open. Floods are visible
+  in all four. Withdrawn scores leave every list and stay in the
+  database with a reason.
+
+
+SECURITY
+  The registry never runs your code. Verify reads HTML as text, follows
+  redirects at most, stops after 512 KB and 8 seconds.
+
+  Claimed urls are resolved first. Private, loopback, link-local and
+  cloud-metadata addresses are rejected.
+
+  Stored about a sender: a salted hash of the IP and of the user agent.
+  Never the address itself.
+
+  gs.js draws in a shadow root. It writes to localStorage only if you
+  set data-store="1" or a consent manager on the page allows it. It
+  makes no request until you call it.
+
+  On the open tier, claiming is not authentication. After verify, the
+  game id sits in your page source. A session raises the cost of spam.
+  It does not stop it. That is why SIGNED exists.
+
+
+USAGE
+  Submit once per finished run.
+  GS.reset() at the start of a run.
+  Never submit a score the player did not reach.
+  Failure to reach the registry must never break the game.
+
+
+LIMITATIONS
+  Open-tier scores are forgeable. Always.
+  "signed" proves the channel, not the number.
+  A secret selects an identity. Losing it means a new surname.
+  An account makes an identity recoverable. An account is optional.
+  A replay field is not specified yet.
+  There is no federation yet. A second collector is another host, not
+  another root, until this file says otherwise.
+  Rate limits are the reference registry's and may move.
+
+
+STATUS
+  HISCORE is the global highscore protocol.
+  First published 2026-08-05. This revision 2026-08-20.
+  Licence: CC BY 4.0.
+  Contact: john@mcgrinsey.com

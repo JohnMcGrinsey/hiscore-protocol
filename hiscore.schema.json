@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gamesareeatingtheworld.com/hiscore.schema.json",
+  "title": "HISCORE/1.2 record",
+  "description": "One score. Spec: https://gamesareeatingtheworld.com/hiscore.txt",
+  "type": "object",
+  "required": ["game", "player", "score"],
+  "additionalProperties": true,
+  "properties": {
+    "game": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 40,
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Claimed game id."
+    },
+    "player": {
+      "type": "string",
+      "maxLength": 24,
+      "description": "The name only, never name plus surname."
+    },
+    "score": {
+      "type": "number",
+      "description": "Absolute value must be under 1e12."
+    },
+    "mode": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "Slash-separated. Different mode, different board."
+    },
+    "unit": {
+      "type": "string",
+      "enum": ["points", "ms", "s", "count"],
+      "default": "points"
+    },
+    "dir": {
+      "type": "string",
+      "enum": ["high", "low"],
+      "default": "high"
+    },
+    "version": {
+      "type": "string",
+      "maxLength": 32,
+      "description": "Build of the sender's game. Displayed, never sorted by."
+    },
+    "rules": {
+      "type": "string",
+      "maxLength": 32,
+      "description": "Ruleset, not the build."
+    },
+    "at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "run_ms": {
+      "type": "number",
+      "minimum": 0
+    },
+    "session": {
+      "type": "string",
+      "maxLength": 40
+    },
+    "run_id": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "pow": {
+      "type": "string"
+    },
+    "provenance": {
+      "type": "string",
+      "enum": ["submitted", "signed", "measured", "imported", "verified"],
+      "readOnly": true,
+      "description": "Set by the server. Ignored on submit."
+    }
+  }
+}
