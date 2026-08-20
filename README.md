@@ -3,13 +3,17 @@
 The global highscore protocol.
 Reference registry: [gamesareeatingtheworld.com](https://gamesareeatingtheworld.com)
 
-This repository is the spec. The running instance is the registry, not this repo.
+This repository is the spec.
 
 - Spec: [`hiscore.txt`](hiscore.txt)
 - Schema: [`hiscore.schema.json`](hiscore.schema.json)
 - Live copy: https://gamesareeatingtheworld.com/hiscore.txt
 
-## Give this line to your agent
+## Vibecoder-friendly: Give this line to your agent
+
+If you are using ai agents to vibecode your games: you are welcome.
+
+Connect yourself to the global highscore system and the global network of players by simply giving this oneliner to your agent:
 
 ```
 Implement HISCORE in my game: https://gamesareeatingtheworld.com/hiscore.txt
@@ -79,17 +83,6 @@ For creators: make your game know to the world and get players who play your gam
 
 All you need to do is to implement the global highscore protocol.
 
-## Vibecoder-friendly
-
-If you are using ai agents to vibecode your games: you are welcome.
-
-Connect yourself to the global highscore system and the global network of players by simply giving this oneliner to your agent:
-
-```
-Implement HISCORE in my game: https://gamesareeatingtheworld.com/hiscore.txt
-```
-
-You are welcome!
 
 ## Change the spec
 
