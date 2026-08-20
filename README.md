@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="https://gamesareeatingtheworld.com">
+    <img src="gaetw.png" alt="GAMES ARE EATING THE WORLD." width="720">
+  </a>
+</p>
+
 # HISCORE/1.2
 
 The global highscore protocol.
