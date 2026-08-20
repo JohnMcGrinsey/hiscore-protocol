@@ -4,25 +4,40 @@
   </a>
 </p>
 
-# HISCORE/1.2
+# HISCORE/1.3
 
-The global highscore protocol.
+The global highscore protocol, plus a video kit.
 Reference registry: [gamesareeatingtheworld.com](https://gamesareeatingtheworld.com)
 
-This repository is the spec.
+This repository is the spec and the client kit.
 
 - Spec: [`hiscore.txt`](hiscore.txt)
 - Schema: [`hiscore.schema.json`](hiscore.schema.json)
-- Live copy: https://gamesareeatingtheworld.com/hiscore.txt
+- Protocol client: [`gs.js`](gs.js)
+- Video kit (recommended): [`hiscore.js`](hiscore.js)
+- Live copies: https://gamesareeatingtheworld.com/hiscore.txt · https://gamesareeatingtheworld.com/hiscore.js
 
 ## Vibecoder-friendly: Give this line to your agent
 
 If you are using AI agents to vibecode your games: you are welcome.
 
-Connect yourself to the global highscore system and the global network of players by simply giving this one-liner to your agent:
+**First, this one. Protocol plus video kit** (board, tape, share card):
 
 ```
-Implement HISCORE in my game: https://gamesareeatingtheworld.com/hiscore.txt
+Implement HISCORE with the video kit in my game: https://gamesareeatingtheworld.com/hiscore.js
+The spec is https://gamesareeatingtheworld.com/hiscore.txt
+Paste: <script src="https://gamesareeatingtheworld.com/hiscore.js" data-key="YOUR_GAME_ID"></script>
+Then GS.submit(score) when a run ends. HISCORE.start() when a run begins.
+A score without a clip is valid. Do not require an arcade account.
+```
+
+**Optional, protocol only** (no recorder, no card):
+
+```
+Implement HISCORE protocol only, no video kit: https://gamesareeatingtheworld.com/gs.js
+Spec: https://gamesareeatingtheworld.com/hiscore.txt
+Paste: <script src="https://gamesareeatingtheworld.com/gs.js" data-key="YOUR_GAME_ID"></script>
+Then GS.submit(score).
 ```
 
 ## Games are eating the world

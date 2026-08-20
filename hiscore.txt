@@ -1,4 +1,4 @@
-HISCORE/1.2
+HISCORE/1.3
 ===========
 The global highscore protocol.
 This file is the specification.
@@ -87,18 +87,34 @@ SESSION (optional, worth it)
 
 
 SUBMIT
-  A) Browser snippet
-     <script src="https://gamesareeatingtheworld.com/gs.js"
+  A) Browser snippet, recommended (protocol + video kit)
+     <script src="https://gamesareeatingtheworld.com/hiscore.js"
              data-key="YOUR_ID" data-version="1.4.0"></script>
      GS.submit(score)
      GS.submit(score, { show: false })
      GS.submit(score, { mode: "level-3/hard", player: "ada" })
+     HISCORE.start() when a run begins.
      Automatic submits must use { show: false }.
+     The kit records the game canvas, shows a share card, and may attach
+     a clip to this score. A score without a clip is valid.
+
+  A2) Browser snippet, protocol only (no recorder, no card)
+     <script src="https://gamesareeatingtheworld.com/gs.js"
+             data-key="YOUR_ID" data-version="1.4.0"></script>
+     GS.submit(score)
+     Same calls as A. No recorder. No card.
 
   B) HTTP
      POST https://gamesareeatingtheworld.com/api/scores
      Content-Type: application/json
      {"game":"YOUR_ID","player":"ada","score":12345,"version":"1.4.0"}
+
+  C) Attach a clip after the score exists
+     POST https://gamesareeatingtheworld.com/api/scores/<id>/proof
+     multipart field "video". Optional "kind" = clip | replay.
+     200 {"ok":true,"proof_url":"https://.../proof/<id>",
+          "proof_sha256":"...","proof_kind":"clip"}
+     CORS is open. No arcade account. Guest scores may carry a clip.
 
 
 SIGNED SCORES
@@ -211,19 +227,25 @@ FIELDS
   session  optional  string   from /api/scores/session. Send this.
   run_id   optional  string   max 64, your id for this run. Same id
                               again returns the same record.
-  pow      optional  string   solution to the session challenge
+  pow          optional  string   solution to the session challenge
+  proof_url    optional  string   https URL of a recording of this run
+  proof_sha256 optional  string   64 hex chars, sha256 of that file
+  proof_kind   optional  enum     clip | replay     default clip
 
   Unknown fields are ignored, not rejected.
   Do not send provenance. The server sets it.
+  A score without proof_url is valid. Never require a clip to submit.
 
 
 RESPONSE
   200 {"ok":true,"id":4711,"rank":7,"flagged":false,"dir":"high",
        "unit":"points","provenance":"submitted","version":"1.4.0",
        "share":"https://gamesareeatingtheworld.com/r/4711",
-       "timed":true,"session_ms":184203}
+       "timed":true,"session_ms":184203,
+       "proof_url":null,"proof_kind":null}
       rank is null when flagged is true.
       share is null when flagged is true.
+      proof_url is null until a clip is attached.
 
   400 bad_score
   403 bad_player_secret
@@ -301,7 +323,8 @@ LIMITATIONS
   "signed" proves the channel, not the number.
   A secret selects an identity. Losing it means a new surname.
   An account makes an identity recoverable. An account is optional.
-  A replay field is not specified yet.
+  proof_url is a file of the run (a clip). An input-log replay format
+  is not specified yet. Do not invent one in the client.
   There is no federation yet. A second collector is another host, not
   another root, until this file says otherwise.
   Rate limits are the reference registry's and may move.
@@ -309,6 +332,6 @@ LIMITATIONS
 
 STATUS
   HISCORE is the global highscore protocol.
-  First published 2026-08-05. This revision 2026-08-20.
+  First published 2026-08-05. This revision 2026-08-20 (1.3).
   Licence: CC BY 4.0.
   Contact: john@mcgrinsey.com
