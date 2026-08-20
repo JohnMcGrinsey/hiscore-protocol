@@ -8,6 +8,9 @@
 (function () {
   'use strict';
   if (window.__HISCORE_KIT) return;
+  /* Die Arcade hat ihr eigenes hiscore.js (Login, Ghost-Ton). Zwei Karten
+     auf play.mcgrinsey.com waeren der Fehler von Hypeout, nochmal. */
+  if (location.hostname === 'play.mcgrinsey.com') return;
   window.__HISCORE_KIT = true;
 
   var me = document.currentScript;
@@ -39,13 +42,120 @@
   /* ---- Recorder: canvas, optional camera, never auto-mic/cam -------------- */
   var rec = null, chunks = [], stream = null, lastBlob = null, lastUrl = null;
   var comp = null, ctx = null, raf = 0, camStream = null, camVideo = null;
-  var wantCam = false, recAn = false, orb = null, menu = null, hostCard = null;
-  var wrapped = false;
+  var wantCam = false, recAn = false, usedComp = false, orb = null, menu = null, hostCard = null;
+  var wrapped = false, webaudioTaps = [], mixCtx = null, mixKeep = [], ticker = null;
 
   function canvas() {
     return document.getElementById('view')
       || document.getElementById('game')
       || document.querySelector('canvas');
+  }
+
+  function tapWebAudio() {
+    try {
+      var P = window.AudioNode && window.AudioNode.prototype;
+      if (!P || P.__hsTap) return;
+      var orig = P.connect;
+      if (typeof orig !== 'function') return;
+      P.connect = function (dest) {
+        var ret = orig.apply(this, arguments);
+        try {
+          var ac = this.context;
+          if (ac && dest === ac.destination) {
+            if (!ac.__hsDest) {
+              ac.__hsDest = ac.createMediaStreamDestination();
+              webaudioTaps.push(ac.__hsDest);
+            }
+            orig.call(this, ac.__hsDest);
+          }
+        } catch (e) {}
+        return ret;
+      };
+      P.__hsTap = true;
+    } catch (e2) {}
+  }
+  tapWebAudio();
+
+  function sammleTon() {
+    var raus = [], seen = {};
+    function add(s) {
+      if (!s) return;
+      try {
+        s.getAudioTracks().forEach(function (t) {
+          if (!t || !t.enabled || t.readyState === 'ended' || seen[t.id]) return;
+          seen[t.id] = true;
+          raus.push(t);
+        });
+      } catch (e) {}
+    }
+    for (var i = 0; i < webaudioTaps.length; i++) add(webaudioTaps[i].stream);
+    try {
+      var nodes = document.querySelectorAll('audio, video');
+      for (var j = 0; j < nodes.length; j++) {
+        var el = nodes[j];
+        if (el === camVideo || el.paused || el.muted) continue;
+        if (typeof el.captureStream === 'function') {
+          try { add(el.captureStream()); } catch (e3) {}
+        }
+      }
+    } catch (e4) {}
+    return raus;
+  }
+
+  function mixSpuren(spuren) {
+    mixKeep = [];
+    if (!spuren.length) return [];
+    if (spuren.length === 1) return spuren.slice();
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return spuren.slice(0, 1);
+    try {
+      if (!mixCtx) mixCtx = new AC();
+      if (mixCtx.state === 'suspended') mixCtx.resume();
+      var dest = mixCtx.createMediaStreamDestination();
+      mixKeep.push(dest);
+      for (var i = 0; i < spuren.length; i++) {
+        var src = mixCtx.createMediaStreamSource(new MediaStream([spuren[i]]));
+        src.connect(dest);
+        mixKeep.push(src);
+      }
+      return dest.stream.getAudioTracks();
+    } catch (e) { return spuren.slice(0, 1); }
+  }
+
+  function boxTag(u, i) {
+    return String.fromCharCode(u[i + 4], u[i + 5], u[i + 6], u[i + 7]);
+  }
+  function mp4InitFirst(u8) {
+    var boxes = [], pos = 0;
+    while (pos + 8 <= u8.length) {
+      var sz = (u8[pos] << 24) | (u8[pos + 1] << 16) | (u8[pos + 2] << 8) | u8[pos + 3];
+      if (sz < 8 || pos + sz > u8.length) return u8;
+      boxes.push(u8.subarray(pos, pos + sz));
+      pos += sz;
+    }
+    if (pos !== u8.length) return u8;
+    var head = [], rest = [], i;
+    for (i = 0; i < boxes.length; i++) {
+      var tag = boxTag(boxes[i], 0);
+      if (tag === 'ftyp' || tag === 'moov') head.push(boxes[i]);
+      else rest.push(boxes[i]);
+    }
+    if (!head.length || boxTag(boxes[0], 0) === 'ftyp') return u8;
+    var out = new Uint8Array(u8.length), o = 0;
+    for (i = 0; i < head.length; i++) { out.set(head[i], o); o += head[i].length; }
+    for (i = 0; i < rest.length; i++) { out.set(rest[i], o); o += rest[i].length; }
+    return out;
+  }
+
+  function packBlob(cb) {
+    if (!chunks.length) { cb(null); return; }
+    var type = (chunks[0] && chunks[0].type) || 'video/webm';
+    var blob;
+    try { blob = new Blob(chunks, { type: type }); } catch (e) { cb(null); return; }
+    if (!/mp4/i.test(type) || !blob.arrayBuffer) { cb(blob); return; }
+    blob.arrayBuffer().then(function (ab) {
+      cb(new Blob([mp4InitFirst(new Uint8Array(ab))], { type: blob.type || 'video/mp4' }));
+    }).catch(function () { cb(blob); });
   }
 
   function mime(mitTon) {
@@ -131,44 +241,67 @@
     if (lastUrl) { try { URL.revokeObjectURL(lastUrl); } catch (e) {} lastUrl = null; }
     var c = canvas();
     if (!c || !window.MediaRecorder) { recAn = false; orbStand(); return false; }
-    bauComp(c);
-    zeichne();
-    var type = mime(false);
+    var ton = mixSpuren(sammleTon());
+    var mitTon = ton.length > 0;
+    var type = mime(mitTon);
+    usedComp = !!(wantCam || !c.captureStream);
     try {
-      stream = comp.captureStream(30);
-      rec = type ? new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 1200000 })
+      var vis;
+      if (usedComp) {
+        bauComp(c);
+        zeichne();
+        vis = comp.captureStream(30);
+      } else {
+        vis = c.captureStream(30);
+      }
+      var tracks = vis.getVideoTracks().slice();
+      if (mitTon) tracks = tracks.concat(ton);
+      stream = new MediaStream(tracks);
+      rec = type ? new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 1400000 })
                  : new MediaRecorder(stream);
     } catch (e) { rec = null; return false; }
     chunks = [];
     rec.ondataavailable = function (ev) { if (ev.data && ev.data.size) chunks.push(ev.data); };
-    try { rec.start(); } catch (e2) { rec = null; return false; }
+    try { rec.start(1000); } catch (e2) { rec = null; return false; }
     recAn = true;
-    raf = requestAnimationFrame(schleife);
+    if (usedComp) raf = requestAnimationFrame(schleife);
+    if (ticker) clearInterval(ticker);
+    ticker = setInterval(function () {
+      try { if (rec && rec.state === 'recording' && rec.requestData) rec.requestData(); } catch (e3) {}
+    }, 1000);
     orbStand();
     return true;
   }
 
   function recStop(quiet, dann) {
+    if (ticker) { clearInterval(ticker); ticker = null; }
     var fertig = function () {
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
-      if (stream) {
+      /* ⚠️ captureStream auf dem Spiel-Canvas: Tracks nicht stoppen,
+         sonst friert das Spielbild in manchen Browsern ein. */
+      if (stream && usedComp) {
         try { stream.getVideoTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
-        stream = null;
       }
-      if (!quiet && chunks.length) {
-        try { lastBlob = new Blob(chunks, { type: chunks[0].type || 'video/webm' }); }
-        catch (e2) { lastBlob = null; }
-        if (lastBlob && lastBlob.size > 800) {
-          try { lastUrl = URL.createObjectURL(lastBlob); } catch (e3) { lastUrl = null; }
-        } else lastBlob = null;
-      }
-      chunks = [];
-      rec = null;
-      recAn = false;
-      orbStand();
-      if (dann) dann();
+      stream = null;
+      var ende = function () {
+        chunks = [];
+        rec = null;
+        recAn = false;
+        orbStand();
+        if (dann) { var f = dann; dann = null; f(); }
+      };
+      if (!quiet) {
+        packBlob(function (blob) {
+          lastBlob = blob && blob.size > 800 ? blob : null;
+          if (lastUrl) { try { URL.revokeObjectURL(lastUrl); } catch (e2) {} lastUrl = null; }
+          if (lastBlob) {
+            try { lastUrl = URL.createObjectURL(lastBlob); } catch (e3) { lastUrl = null; }
+          }
+          ende();
+        });
+      } else ende();
     };
-    if (!rec || rec.state === 'inactive') { fertig(); return; }
+    if (!rec || !rec.state || rec.state === 'inactive') { fertig(); return; }
     var r = rec;
     var to = setTimeout(fertig, 900);
     r.onstop = function () { clearTimeout(to); fertig(); };
@@ -179,13 +312,18 @@
   function orbStand() {
     if (!orb) return;
     orb.setAttribute('data-an', recAn ? '1' : '0');
+    orb.style.background = recAn ? '#5a1010' : '#10141d';
+    orb.style.borderColor = recAn ? '#ff5f5f' : '#ffd23c';
+    orb.style.color = recAn ? '#ffb0b0' : '#ffd23c';
     orb.title = recAn ? (DE ? 'Aufnahme läuft' : 'Recording') : (DE ? 'HISCORE aufnehmen' : 'Record HISCORE');
   }
 
   function orbBau() {
     if (orb) return;
+    var arcade = !!document.getElementById('arcade-orb-btn');
     var wrap = document.createElement('div');
-    wrap.style.cssText = 'position:fixed;left:128px;top:12px;z-index:2147483645;font-family:Poppins,"IBM Plex Sans",sans-serif';
+    wrap.style.cssText = 'position:fixed;left:' + (arcade ? '128px' : '12px') +
+      ';top:12px;z-index:2147483645;font-family:Poppins,"IBM Plex Sans",sans-serif';
     orb = document.createElement('button');
     orb.type = 'button';
     orb.textContent = 'REC';

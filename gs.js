@@ -1,5 +1,7 @@
-/*! gs.js: Games Are Eating The World, global score board.
-    Einbinden:
+/*! gs.js: HISCORE protocol only (no recorder, no card).
+    Recommended kit (protocol + tape + card):
+      <script src="https://gamesareeatingtheworld.com/hiscore.js" data-key="DEIN_KEY"></script>
+    Protocol only:
       <script src="https://gamesareeatingtheworld.com/gs.js" data-key="DEIN_KEY"></script>
     Benutzen:
       GS.submit(1234)            Punktestand abgeben, fragt einmal nach dem Namen
