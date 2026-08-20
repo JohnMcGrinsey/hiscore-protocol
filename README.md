@@ -11,9 +11,9 @@ This repository is the spec.
 
 ## Vibecoder-friendly: Give this line to your agent
 
-If you are using ai agents to vibecode your games: you are welcome.
+If you are using AI agents to vibecode your games: you are welcome.
 
-Connect yourself to the global highscore system and the global network of players by simply giving this oneliner to your agent:
+Connect yourself to the global highscore system and the global network of players by simply giving this one-liner to your agent:
 
 ```
 Implement HISCORE in my game: https://gamesareeatingtheworld.com/hiscore.txt
@@ -27,9 +27,9 @@ That still holds.
 
 What happened since: software is back, and this time it arrives as a game.
 
-The HISCORE protocol and registry solves multiple new problems:
+The HISCORE protocol and registry solve multiple new problems:
 
-Hiscore hunting means **pure joy for players**.
+HISCORE hunting means **pure joy for players**.
 
 Building games is **pure joy for creators**.
 
@@ -39,9 +39,9 @@ Imagine this: you stumble on a new game by an unknown vibecoder in the morning a
 
 Who will ever know that you were there?
 
-Noone.
+No one.
 
-Hiscore protocol and the global registry change that: **your hiscores can finally live forever.**
+HISCORE protocol and the global registry change that: **your highscores can finally live forever.**
 
 **Long after the server is gone. Your score persists.**
 
@@ -51,15 +51,15 @@ Hiscore protocol and the global registry change that: **your hiscores can finall
 
 "We are the players of the world."
 
-"And we love hiscores!"
+"And we love highscores!"
 
 **Players get fame. Games get players.**
 
 ## For creators: Games get players!
 
-The other side of the coin: game builders, vibecoders, indiehackers ––– 
+The other side of the coin: game builders, vibecoders, indiehackers.
 
-we all love to create new games.
+We all love to create new games.
 
 But then?
 
@@ -67,19 +67,19 @@ Who plays them?
 
 Who will ever honor your creative genius and all the energy and love you put into all those little details?
 
-Noone.
+No one.
 
-Hiscore protocol and the global registry change that: 
+HISCORE protocol and the global registry change that: 
 
 **your games get seen and played by real players who compete for highscores in YOUR GAME.**
 
-Now isn't awesome?
+Now isn't that awesome?
 
 We are turning the world into one giant, playful party for all the players out there!
 
 For players: **discover new games, beat highscores and live in a global hall of fame forever!**
 
-For creators: **make your game know to the world and get players who play your game!**
+For creators: **make your game known to the world and get players who play your game!**
 
 All you need to do is to implement the global highscore protocol.
 
