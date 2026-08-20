@@ -31,7 +31,9 @@ Building games is pure joy for creators.
 
 ## For players: get fame & find games!
 
-Imagine this: you stumble on a new game by an unknown vibecoder in the morning and beat the highscore. Who will ever know that you were there?
+Imagine this: you stumble on a new game by an unknown vibecoder in the morning and beat the highscore. 
+
+Who will ever know that you were there?
 
 Noone.
 
@@ -51,7 +53,9 @@ Players get fame. Games get players.
 
 ## For creators: Games get players!
 
-The other side of the coin: game builders, vibecoders, indiehackers all love to create new games.
+The other side of the coin: game builders, vibecoders, indiehackers ––– 
+
+we all love to create new games.
 
 But then?
 
