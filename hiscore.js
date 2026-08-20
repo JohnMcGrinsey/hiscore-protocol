@@ -357,6 +357,45 @@
   }
 
   /* ---- Share card ---------------------------------------------------------- */
+  function xhrForm(url, fd, aufFortschritt, dann) {
+    var x = new XMLHttpRequest();
+    x.open('POST', url);
+    x.upload.onprogress = function (ev) {
+      if (!aufFortschritt) return;
+      if (ev.lengthComputable && ev.total > 0) {
+        aufFortschritt(Math.max(1, Math.min(99, Math.round(100 * ev.loaded / ev.total))));
+      } else aufFortschritt(null);
+    };
+    x.onload = function () {
+      var j = null;
+      try { j = JSON.parse(x.responseText || '{}'); } catch (e) {}
+      var ok = x.status >= 200 && x.status < 300 && !!(j && j.ok);
+      if (ok && aufFortschritt) aufFortschritt(100);
+      if (dann) dann(ok, j);
+    };
+    x.onerror = function () { if (dann) dann(false); };
+    x.send(fd);
+  }
+
+  function balkenZeig(root, pct, text) {
+    var box = root.querySelector('.bar');
+    if (!box) return;
+    box.classList.add('an');
+    box.classList.toggle('wart', pct == null);
+    var fuell = box.querySelector('.fuell');
+    var lab = box.querySelector('.pct');
+    if (fuell && pct != null) fuell.style.width = pct + '%';
+    if (lab) lab.textContent = text || (pct != null ? pct + '%' : '');
+  }
+
+  function balkenText(pct, fertig, fehl) {
+    if (fehl) return DE ? 'Senden fehlgeschlagen' : 'Send failed';
+    if (fertig || pct === 100) return DE ? 'Oben. 100%' : 'Up. 100%';
+    if (pct == null) return DE ? 'Lädt hoch…' : 'Uploading…';
+    if (pct >= 99) return DE ? 'Speichere…' : 'Saving…';
+    return (DE ? 'Lädt hoch… ' : 'Uploading… ') + pct + '%';
+  }
+
   function karte(d, score, name) {
     try { if (hostCard && hostCard.isConnected) hostCard.remove(); } catch (e) {}
     var host = document.createElement('div');
@@ -390,6 +429,15 @@
       '.hin{font-size:11px;color:#8a7a58;margin:0 0 8px}' +
       '.v{display:block;margin-top:10px;padding-top:8px;border-top:1px solid #3a3020;font-size:11px;color:#8a7a58}' +
       '.v button{background:none;border:0;padding:0;color:#ffd23c;font:inherit;text-decoration:underline;cursor:pointer}' +
+      '.bar{display:none;margin:4px 0 10px}' +
+      '.bar.an{display:block}' +
+      '.bar .spur{height:8px;background:#2a1e08;border:1px solid #7a5a12;border-radius:999px;overflow:hidden}' +
+      '.bar .fuell{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffd23c,#fff3c4);' +
+      'border-radius:999px;transition:width .12s linear}' +
+      '.bar.wart .fuell{width:32%;animation:schub 1s ease-in-out infinite alternate}' +
+      '@keyframes schub{from{transform:translateX(-40%)}to{transform:translateX(220%)}}' +
+      '@media (prefers-reduced-motion:reduce){.bar .fuell{transition:none}.bar.wart .fuell{animation:none;width:50%}}' +
+      '.bar .pct{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#ffd23c;margin-top:5px}' +
       '</style>' +
       '<div class="k"><button class="x" type="button">&times;</button>' +
       '<div class="t">Games Are Eating The World</div>' +
@@ -398,7 +446,8 @@
       '<div class="gold">' + esc(name || 'player') + '</div>' +
       (score != null ? '<div class="gold sc">' + esc(score) + '</div>' : '') +
       (hat ? '<video muted playsinline controls src="' + lastUrl + '"></video>' +
-        '<p class="hin">' + (DE ? 'Der Score ist auf der Liste. Das Video geht nur, wenn du sendest.' : 'The score is on the list. The video goes only if you send it.') + '</p>' : '') +
+        '<p class="hin">' + (DE ? 'Der Score ist auf der Liste. Das Video geht nur, wenn du sendest.' : 'The score is on the list. The video goes only if you send it.') + '</p>' +
+        '<div class="bar"><div class="spur"><i class="fuell"></i></div><div class="pct"></div></div>' : '') +
       '<button class="s" type="button">' + (hat ? (DE ? 'Video mit Freunden teilen' : 'Share video with friends') : (DE ? 'Mit Freunden teilen' : 'Share with friends')) + '</button>' +
       (hat ? '<button class="post" type="button">' + (DE ? 'Video an die Weltrangliste senden' : 'Send video to the world ranking') + '</button>' : '') +
       '<a class="see" href="' + esc(board) + '" target="_blank" rel="noopener">' + (DE ? 'Weltrangliste öffnen' : 'Open the ranking') + '</a>' +
@@ -434,18 +483,19 @@
       if (!d || !d.id || !lastBlob) return;
       post.disabled = true;
       post.textContent = DE ? 'Sende…' : 'Sending…';
+      balkenZeig(r, 1, balkenText(1));
       var fd = new FormData();
       fd.append('video', lastBlob, /mp4/i.test(lastBlob.type || '') ? 'run.mp4' : 'run.webm');
       fd.append('kind', 'clip');
-      fetch(BASE + '/api/scores/' + d.id + '/proof', { method: 'POST', body: fd, mode: 'cors' })
-        .then(function (res) { return res.json(); })
-        .then(function (j) {
-          post.textContent = (j && j.ok)
-            ? (DE ? 'Video ist auf der Liste' : 'Video is on the ranking')
-            : (DE ? 'Senden fehlgeschlagen' : 'Send failed');
-          if (!(j && j.ok)) post.disabled = false;
-        })
-        .catch(function () { post.textContent = DE ? 'Senden fehlgeschlagen' : 'Send failed'; post.disabled = false; });
+      xhrForm(BASE + '/api/scores/' + d.id + '/proof', fd, function (pct) {
+        balkenZeig(r, pct, balkenText(pct));
+      }, function (ok) {
+        post.textContent = ok
+          ? (DE ? 'Video ist auf der Liste' : 'Video is on the ranking')
+          : (DE ? 'Senden fehlgeschlagen' : 'Send failed');
+        balkenZeig(r, ok ? 100 : 0, balkenText(ok ? 100 : 0, ok, !ok));
+        if (!ok) post.disabled = false;
+      });
     };
     document.body.appendChild(host);
   }
