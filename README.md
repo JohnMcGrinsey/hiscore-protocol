@@ -65,7 +65,9 @@ Who will ever honor your creative genius and all the energy and love you put int
 
 Noone.
 
-Hiscore protocol and the global registry change that: your games get seen and played by real players who compete for highscores in YOUR GAME.
+Hiscore protocol and the global registry change that: 
+
+your games get seen and played by real players who compete for highscores in YOUR GAME.
 
 Now isn't awesome?
 
