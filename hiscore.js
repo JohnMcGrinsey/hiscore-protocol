@@ -404,9 +404,18 @@
     var r = host.attachShadow({ mode: 'open' });
     var board = (d && d.share) || (BASE + '/board/' + encodeURIComponent((window.GS && GS.key) || KEY));
     var rang = d && d.rank;
-    var platz = (typeof rang === 'number' && rang > 0)
-      ? (DE ? 'Platz <b>' + rang + '</b> weltweit' : 'Rank <b>' + rang + '</b> worldwide')
-      : (DE ? 'Dein Lauf ist drin' : 'Your run is in');
+    var total = d && d.total;
+    var platz;
+    if (typeof rang === 'number' && rang > 0) {
+      var von = (typeof total === 'number' && total > 0)
+        ? (DE ? ' von ' + total : ' of ' + total) : '';
+      platz = (DE ? 'Platz <b>' + rang + '</b>' : 'Rank <b>' + rang + '</b>') + von;
+    } else {
+      platz = DE ? 'Dein Lauf ist drin' : 'Your run is in';
+    }
+    var t1 = (typeof rang === 'number' && rang > 0 && rang <= 3)
+      ? (DE ? 'Dein Highscore steht in der Weltrangliste.' : 'Your highscore is on the world ranking.')
+      : (DE ? 'Dein Lauf steht in der Weltrangliste.' : 'Your run is on the world ranking.');
     var hat = !!(lastBlob && lastUrl);
     r.innerHTML =
       '<style>' +
@@ -441,7 +450,7 @@
       '</style>' +
       '<div class="k"><button class="x" type="button">&times;</button>' +
       '<div class="t">Games Are Eating The World</div>' +
-      '<p class="lead">' + (DE ? 'Dein Highscore steht in der Weltrangliste.' : 'Your highscore is on the world ranking.') + '</p>' +
+      '<p class="lead">' + t1 + '</p>' +
       '<div class="rang">' + platz + '</div>' +
       '<div class="gold">' + esc(name || 'player') + '</div>' +
       (score != null ? '<div class="gold sc">' + esc(score) + '</div>' : '') +
@@ -460,7 +469,8 @@
     var vb = r.querySelector('.vb');
     if (vb) vb.onclick = function () { try { GS.connect(); } catch (e2) {} };
     var txt = (name || 'player') + (score != null ? ' · ' + score : '') +
-      (rang ? (DE ? ' · Platz ' : ' · Rank ') + rang : '') +
+      (rang ? (DE ? ' · Platz ' : ' · Rank ') + rang +
+        ((typeof total === 'number' && total > 0) ? (DE ? ' von ' : ' of ') + total : '') : '') +
       ' · Games Are Eating The World';
     r.querySelector('.s').onclick = function () {
       var payload = { title: 'HISCORE', text: txt, url: board };

@@ -238,11 +238,13 @@ FIELDS
 
 
 RESPONSE
-  200 {"ok":true,"id":4711,"rank":7,"flagged":false,"dir":"high",
+  200 {"ok":true,"id":4711,"rank":7,"total":71,"flagged":false,"dir":"high",
        "unit":"points","provenance":"submitted","version":"1.4.0",
        "share":"https://gamesareeatingtheworld.com/r/4711",
        "timed":true,"session_ms":184203,
        "proof_url":null,"proof_kind":null}
+      rank is this run among all unflagged runs of the game, 1-based.
+      total is how many unflagged runs the game has.
       rank is null when flagged is true.
       share is null when flagged is true.
       proof_url is null until a clip is attached.
