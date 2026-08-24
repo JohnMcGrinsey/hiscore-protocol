@@ -4,41 +4,40 @@
   </a>
 </p>
 
-# HISCORE/1.3
+# HISCORE/1.4
 
-The global highscore protocol, plus a video kit.
+The global highscore protocol.
+Plain HTTP. No SDK. Zero required code from us inside your game.
 Reference registry: [gamesareeatingtheworld.com](https://gamesareeatingtheworld.com)
 
-This repository is the spec and the client kit.
+Two separate bricks, versioned in lockstep:
 
-- Spec: [`hiscore.txt`](hiscore.txt)
-- Schema: [`hiscore.schema.json`](hiscore.schema.json)
-- Protocol client: [`gs.js`](gs.js)
-- Video kit (recommended): [`hiscore.js`](hiscore.js)
-- Live copies: https://gamesareeatingtheworld.com/hiscore.txt · https://gamesareeatingtheworld.com/hiscore.js
+- **HISCORE/1.4**, the protocol: [`hiscore.txt`](hiscore.txt) · Schema: [`hiscore.schema.json`](hiscore.schema.json) · Optional one script line: [`gs.js`](gs.js)
+- **HISCORE-VIDEO/1.4**, the optional companion package (a clip on a score): [`hiscore-video.txt`](hiscore-video.txt) · Kit: [`hiscore.js`](hiscore.js)
+- Live copies: https://gamesareeatingtheworld.com/hiscore.txt · https://gamesareeatingtheworld.com/hiscore-video.txt
+
+HISCORE/1.4 pairs with HISCORE-VIDEO/1.4. There is no mixed pairing.
 
 ## Vibecoder-friendly: Give this line to your agent
 
 If you are using AI agents to vibecode your games: you are welcome.
 
-**First, this one. Protocol plus video kit** (board, tape, share card):
+**The protocol. Nothing to install, nothing of ours runs in your game:**
 
 ```
-Implement HISCORE with the video kit in my game: https://gamesareeatingtheworld.com/hiscore.js
-The spec is https://gamesareeatingtheworld.com/hiscore.txt
-Paste: <script src="https://gamesareeatingtheworld.com/hiscore.js" data-key="YOUR_GAME_ID"></script>
-Then GS.submit(score) when a run ends. HISCORE.start() when a run begins.
-A score without a clip is valid. Do not require an arcade account.
+Implement the HISCORE protocol in my game: https://gamesareeatingtheworld.com/hiscore.txt
+Plain HTTP, no SDK, no third-party code.
+Claim an id, then POST scores to https://gamesareeatingtheworld.com/api/scores when a run ends.
 ```
 
-**Optional, protocol only** (no recorder, no card):
+**Optional convenience, one script line** (name prompt, board overlay, session work):
 
 ```
-Implement HISCORE protocol only, no video kit: https://gamesareeatingtheworld.com/gs.js
-Spec: https://gamesareeatingtheworld.com/hiscore.txt
-Paste: <script src="https://gamesareeatingtheworld.com/gs.js" data-key="YOUR_GAME_ID"></script>
-Then GS.submit(score).
+Optional: <script src="https://gamesareeatingtheworld.com/gs.js" data-key="YOUR_GAME_ID"></script>
+Then GS.submit(score). Spec: https://gamesareeatingtheworld.com/hiscore.txt
 ```
+
+**Optional package HISCORE-VIDEO** (a recording attached to a score, share card): see [`hiscore-video.txt`](hiscore-video.txt). A score without a clip is always valid.
 
 ## Games are eating the world
 

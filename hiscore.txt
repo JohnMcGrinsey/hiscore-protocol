@@ -1,4 +1,4 @@
-HISCORE/1.3
+HISCORE/1.4
 ===========
 The global highscore protocol.
 This file is the specification.
@@ -13,6 +13,9 @@ page. Fetch it. Follow it. Do not invent fields.
 
 One score. Any game. One public board.
 The player needs no account. The game needs no SDK and no build step.
+HISCORE is plain HTTP. Nothing from us has to run inside your game.
+No foreign script, no package, no dependency. You can implement this
+protocol end to end with your own code and nothing else.
 
 Copies of this document may live anywhere. They are not a second root.
 The reference registry is gamesareeatingtheworld.com.
@@ -54,7 +57,7 @@ CLAIM THE GAME
 
 TWO WAYS TO SEND
   OPEN (default)
-    The browser posts the score. Two lines of HTML. Label: submitted.
+    The browser posts the score. One fetch call. Label: submitted.
     Forgeable. We say so.
 
   SIGNED (use this when the project has or can have a server)
@@ -70,12 +73,11 @@ SESSION (optional, worth it)
        "challenge":"fd9d214de8a1bf63","difficulty":18}
 
   Open once when the game loads. Send "session" with every score.
-  The session measures time on the page. GS.reset() starts the run clock.
   session_ms is time since the session opened, not the length of one run.
 
   Solve any n where sha256(challenge + ":" + n) begins with "difficulty"
-  zero bits. Send it as "pow" on the first score. gs.js does this in
-  the background, time-sliced, so it does not drop a frame.
+  zero bits. Send it as "pow" on the first score. Do the work off the
+  main thread or time-sliced, so it does not drop a frame.
 
   Without a solved session: 5 scores per minute per IP.
   With it: 20. A school network notices the small number. A single
@@ -87,34 +89,23 @@ SESSION (optional, worth it)
 
 
 SUBMIT
-  A) Browser snippet, recommended (protocol + video kit)
-     <script src="https://gamesareeatingtheworld.com/hiscore.js"
+  A) HTTP, the protocol itself
+     POST https://gamesareeatingtheworld.com/api/scores
+     Content-Type: application/json
+     {"game":"YOUR_ID","player":"ada","score":12345,"version":"1.4.0"}
+     Send once per finished run. CORS is open.
+
+  B) Browser snippet, optional convenience (our code, not required)
+     <script src="https://gamesareeatingtheworld.com/gs.js"
              data-key="YOUR_ID" data-version="1.4.0"></script>
      GS.submit(score)
      GS.submit(score, { show: false })
      GS.submit(score, { mode: "level-3/hard", player: "ada" })
-     HISCORE.start() when a run begins.
+     GS.reset() when a run begins.
      Automatic submits must use { show: false }.
-     The kit records the game canvas, shows a share card, and may attach
-     a clip to this score. A score without a clip is valid.
-
-  A2) Browser snippet, protocol only (no recorder, no card)
-     <script src="https://gamesareeatingtheworld.com/gs.js"
-             data-key="YOUR_ID" data-version="1.4.0"></script>
-     GS.submit(score)
-     Same calls as A. No recorder. No card.
-
-  B) HTTP
-     POST https://gamesareeatingtheworld.com/api/scores
-     Content-Type: application/json
-     {"game":"YOUR_ID","player":"ada","score":12345,"version":"1.4.0"}
-
-  C) Attach a clip after the score exists
-     POST https://gamesareeatingtheworld.com/api/scores/<id>/proof
-     multipart field "video". Optional "kind" = clip | replay.
-     200 {"ok":true,"proof_url":"https://.../proof/<id>",
-          "proof_sha256":"...","proof_kind":"clip"}
-     CORS is open. No arcade account. Guest scores may carry a clip.
+     gs.js asks for the name once, shows the board, solves the session
+     challenge in the background. It records nothing. Everything it does
+     is also possible over plain HTTP (A).
 
 
 SIGNED SCORES
@@ -227,27 +218,21 @@ FIELDS
   session  optional  string   from /api/scores/session. Send this.
   run_id   optional  string   max 64, your id for this run. Same id
                               again returns the same record.
-  pow          optional  string   solution to the session challenge
-  proof_url    optional  string   https URL of a recording of this run
-  proof_sha256 optional  string   64 hex chars, sha256 of that file
-  proof_kind   optional  enum     clip | replay     default clip
+  pow      optional  string   solution to the session challenge
 
   Unknown fields are ignored, not rejected.
   Do not send provenance. The server sets it.
-  A score without proof_url is valid. Never require a clip to submit.
 
 
 RESPONSE
   200 {"ok":true,"id":4711,"rank":7,"total":71,"flagged":false,"dir":"high",
        "unit":"points","provenance":"submitted","version":"1.4.0",
        "share":"https://gamesareeatingtheworld.com/r/4711",
-       "timed":true,"session_ms":184203,
-       "proof_url":null,"proof_kind":null}
+       "timed":true,"session_ms":184203}
       rank is this run among all unflagged runs of the game, 1-based.
       total is how many unflagged runs the game has.
       rank is null when flagged is true.
       share is null when flagged is true.
-      proof_url is null until a clip is attached.
 
   400 bad_score
   403 bad_player_secret
@@ -304,18 +289,38 @@ SECURITY
   Stored about a sender: a salted hash of the IP and of the user agent.
   Never the address itself.
 
-  gs.js draws in a shadow root. It writes to localStorage only if you
-  set data-store="1" or a consent manager on the page allows it. It
-  makes no request until you call it.
+  Nothing in this protocol requires third-party code in your game.
+  A game that only ever calls the HTTP endpoints has loaded zero bytes
+  from us. That is by design, and it stays that way.
+
+  If you do use gs.js: it draws in a shadow root. It writes to
+  localStorage only if you set data-store="1" or a consent manager on
+  the page allows it. It makes no request until you call it.
 
   On the open tier, claiming is not authentication. After verify, the
   game id sits in your page source. A session raises the cost of spam.
   It does not stop it. That is why SIGNED exists.
 
 
+COMPANION PACKAGES
+  The protocol above is complete. Everything else is a separate,
+  optional package. A package never becomes a requirement, and a
+  registry must accept a score that uses none of them.
+
+  HISCORE-VIDEO/1.4
+    Attach a recording of a run to a score, so a record carries its
+    own footage. Adds the fields proof_url, proof_sha256, proof_kind
+    and one upload endpoint, plus a browser kit (hiscore.js) that
+    records the game canvas and shows a share card.
+    Spec: https://gamesareeatingtheworld.com/hiscore-video.txt
+    A score without a clip is always valid. Never require a clip.
+
+  Package versions move in lockstep with this file. HISCORE/1.4 pairs
+  with HISCORE-VIDEO/1.4. There is no mixed pairing.
+
+
 USAGE
   Submit once per finished run.
-  GS.reset() at the start of a run.
   Never submit a score the player did not reach.
   Failure to reach the registry must never break the game.
 
@@ -325,8 +330,8 @@ LIMITATIONS
   "signed" proves the channel, not the number.
   A secret selects an identity. Losing it means a new surname.
   An account makes an identity recoverable. An account is optional.
-  proof_url is a file of the run (a clip). An input-log replay format
-  is not specified yet. Do not invent one in the client.
+  An input-log replay format is not specified yet. Do not invent one
+  in the client.
   There is no federation yet. A second collector is another host, not
   another root, until this file says otherwise.
   Rate limits are the reference registry's and may move.
@@ -334,6 +339,9 @@ LIMITATIONS
 
 STATUS
   HISCORE is the global highscore protocol.
-  First published 2026-08-05. This revision 2026-08-20 (1.3).
+  First published 2026-08-05. This revision 2026-08-24 (1.4).
+  1.4 split the protocol into this file (pure HISCORE, plain HTTP,
+  zero required code) and optional companion packages. The tape
+  fields of 1.3 moved to HISCORE-VIDEO/1.4. No field changed shape.
   Licence: CC BY 4.0.
   Contact: john@mcgrinsey.com

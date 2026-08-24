@@ -1,9 +1,10 @@
-/*! HISCORE kit: protocol + tape + share card.
-    Recommended one-liner:
+/*! HISCORE-VIDEO kit: optional companion package to the HISCORE protocol.
+    Spec of this package:  https://gamesareeatingtheworld.com/hiscore-video.txt
+    The protocol itself:   https://gamesareeatingtheworld.com/hiscore.txt (plain HTTP, needs no script)
+    This kit = protocol client + tape + share card:
       <script src="https://gamesareeatingtheworld.com/hiscore.js" data-key="YOUR_ID"></script>
-      GS.submit(score)
-    Protocol only (no recorder, no card):
-      <script src="https://gamesareeatingtheworld.com/gs.js" data-key="YOUR_ID"></script>
+      HISCORE.start() when a run begins, GS.submit(score) when it ends.
+    Versions move in lockstep with the protocol (HISCORE-VIDEO/1.4 pairs with HISCORE/1.4).
     No arcade account. Identity is GS.connect(). A score without a clip is valid. */
 (function () {
   'use strict';

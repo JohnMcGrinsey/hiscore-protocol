@@ -1,8 +1,10 @@
-/*! gs.js: HISCORE protocol only (no recorder, no card).
-    Recommended kit (protocol + tape + card):
-      <script src="https://gamesareeatingtheworld.com/hiscore.js" data-key="DEIN_KEY"></script>
-    Protocol only:
+/*! gs.js: optionale Skript-Zeile fuer das HISCORE-Protokoll.
+    Das Protokoll selbst ist reines HTTP und braucht dieses Skript nicht:
+      https://gamesareeatingtheworld.com/hiscore.txt
+    Diese Zeile ist die Bequemlichkeit (Name, Board, Session-PoW):
       <script src="https://gamesareeatingtheworld.com/gs.js" data-key="DEIN_KEY"></script>
+    Optionales Zusatzpaket HISCORE-VIDEO (Clip am Score, gleiche Fassung):
+      https://gamesareeatingtheworld.com/hiscore-video.txt
     Benutzen:
       GS.submit(1234)            Punktestand abgeben, fragt einmal nach dem Namen
       GS.submit(1234, { version: '1.4.0' })   mit Version, besser
