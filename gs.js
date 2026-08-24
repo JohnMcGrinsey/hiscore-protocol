@@ -1,15 +1,15 @@
-/*! gs.js: optionale Skript-Zeile fuer das HISCORE-Protokoll.
-    Das Protokoll selbst ist reines HTTP und braucht dieses Skript nicht:
+/*! gs.js: optional one script line for the HISCORE protocol.
+    The protocol itself is plain HTTP and does not need this script:
       https://gamesareeatingtheworld.com/hiscore.txt
-    Diese Zeile ist die Bequemlichkeit (Name, Board, Session-PoW):
-      <script src="https://gamesareeatingtheworld.com/gs.js" data-key="DEIN_KEY"></script>
-    Optionales Zusatzpaket HISCORE-VIDEO (Clip am Score, gleiche Fassung):
+    This line is the convenience (name prompt, board overlay, session work):
+      <script src="https://gamesareeatingtheworld.com/gs.js" data-key="YOUR_KEY"></script>
+    Optional companion package HISCORE-VIDEO (a clip on a score, same version):
       https://gamesareeatingtheworld.com/hiscore-video.txt
-    Benutzen:
-      GS.submit(1234)            Punktestand abgeben, fragt einmal nach dem Namen
-      GS.submit(1234, { version: '1.4.0' })   mit Version, besser
-      GS.show()                  Bestenliste einblenden
-    Alles laeuft im Shadow DOM, dein Spiel-CSS wird nicht angefasst. */
+    Usage:
+      GS.submit(1234)            submit a score, asks for the name once
+      GS.submit(1234, { version: '1.4.0' })   with a version, better
+      GS.show()                  show the leaderboard
+    Everything runs in a shadow DOM, your game's CSS is never touched. */
 (function () {
   'use strict';
   if (window.GS) return;
@@ -21,44 +21,44 @@
   })();
   var NAME_KEY = 'gaetw.player';
 
-  /* ⚠️ Speicher-Regel fuer fremde Seiten.
-     Dieses Skript laeuft in DEINEM Spiel, auf DEINER Domain. Der Speicher
-     dort gehoert dir, und verantwortlich fuer die Einwilligung bist du,
-     nicht wir. Deshalb halten wir den Namen per Default nur im
-     Arbeitsspeicher: er gilt fuer diese Sitzung und ist danach weg.
+  /* ⚠️ Storage rule on foreign pages.
+     This script runs inside YOUR game, on YOUR domain. The storage there
+     belongs to you, and you are the one responsible for consent, not us.
+     That is why the name is kept in memory only by default: it lasts for
+     this visit and is gone afterwards.
 
-     Dauerhaft merken nur, wenn du es ausdruecklich sagst:
+     Persist it only if you say so explicitly:
        <script src=".../gs.js" data-key="..." data-store="1"></script>
-     Setz das erst, wenn dein eigener Consent-Banner dafuer die Zustimmung
-     hat. Auf unserer eigenen Seite entscheidet unser Consent-Manager. */
+     Set that only once your own consent banner has approval for it. On
+     our own site, our consent manager decides. */
   var memName = null;
 
-  /* ---- Die Spielmarke ---------------------------------------------------------
-     Wer bei uns angemeldet ist, spielte hier trotzdem als Gast: sein
-     Geheimnis liegt auf unserer Domain, dein Spiel laeuft auf deiner, und
-     der Browser haelt beides absichtlich getrennt.
+  /* ---- The per-game token -----------------------------------------------------
+     A player signed in with us still played here as a guest: their secret
+     lives on our domain, your game runs on yours, and the browser keeps
+     the two apart on purpose.
 
-     Der Weg zurueck ist /connect: der Spieler bestaetigt bei uns und kommt
-     mit einer Marke im Fragment wieder. Alles hinter dem `#` bleibt im
-     Browser, die Marke steht also in keinem Server-Protokoll.
+     The way back is /connect: the player confirms with us and returns
+     with a token in the URL fragment. Everything behind the `#` stays in
+     the browser, so the token never appears in any server log.
 
-     ⚠️ Die Marke gilt NUR fuer dieses Spiel. Selbst wenn du sie ausliest,
-     kannst du damit in keinem anderen Spiel etwas in seinem Namen melden.
+     ⚠️ The token is valid for THIS game only. Even if you read it out,
+     you cannot post in the player's name in any other game.
 
-     ⚠️ Gespeichert wird sie nur, wenn du Speichern erlaubst (data-store
-     oder dein Consent-Manager). Ohne das gilt sie fuer diese Sitzung, und
-     das ist der ehrlichere Default auf einer fremden Seite. */
+     ⚠️ It is stored only if you allow storage (data-store or your consent
+     manager). Otherwise it lasts for this visit, which is the more honest
+     default on a foreign page. */
   var TOKEN_KEY = 'gaetw.token.' + KEY;
   var memTok = null;
 
-  (function ernteMarke() {
+  (function harvestToken() {
     var h = location.hash || '';
     var m = h.match(/[#&]hiscore_player=([A-Za-z0-9_-]+)/);
     if (!m) return;
     memTok = m[1];
     if (mayStore()) { try { localStorage.setItem(TOKEN_KEY, memTok); } catch (e) {} }
-    /* Aus der Adresszeile raus, sonst steht sie im Verlauf und wandert per
-       Kopieren-und-Einfuegen weiter. */
+    /* Drop it from the address bar, otherwise it sits in the history and
+       travels on via copy and paste. */
     var rest = h.replace(m[0], m[0][0] === '#' ? '#' : '').replace(/^#&/, '#');
     try {
       history.replaceState(null, '', location.pathname + location.search +
@@ -66,7 +66,7 @@
     } catch (e) {}
   })();
 
-  function marke() {
+  function token() {
     if (memTok) return memTok;
     if (mayStore()) { try { return localStorage.getItem(TOKEN_KEY) || null; } catch (e) {} }
     return null;
@@ -148,30 +148,30 @@
 
   var started = Date.now();
 
-  /* ---- Spielsitzung ---------------------------------------------------------
-     Beim Laden eroeffnen wir eine Sitzung. Der Server stempelt den Anfang,
-     und beim Abgeben rechnet ER die Dauer aus. Damit ist die Laufzeit eine
-     Messung statt einer Behauptung.
+  /* ---- Game session ----------------------------------------------------------
+     On load we open a session. The server stamps the start, and on submit
+     IT computes the duration. That turns the run time into a measurement
+     instead of a claim.
 
-     ⚠️ Es geht schief? Dann laeuft alles weiter. Eine Bestenliste darf ein
-     Spiel nie anhalten, und ein Punktestand ohne Sitzung wird angenommen,
-     er ist nur schwaecher belegt. */
-  var SITZUNG = null, ARBEIT = null;
+     ⚠️ Something fails? Everything keeps running. A leaderboard must never
+     halt a game, and a score without a session is accepted, it is just
+     backed more weakly. */
+  var SESSION = null, POW = null;
 
-  /* ---- SHA-256, klein und ohne Abhaengigkeit --------------------------------
-     Wird nur fuer die Sitzungsaufgabe gebraucht. crypto.subtle scheidet aus:
-     es ist asynchron, und eine Million await kosten mehr als das Rechnen. */
+  /* ---- SHA-256, small and dependency-free ------------------------------------
+     Only needed for the session challenge. crypto.subtle is out: it is
+     asynchronous, and a million awaits cost more than the hashing. */
   var K256 = [];
   (function () {
-    function wurzel(n, p) { return Math.floor((Math.pow(n, 1 / p) % 1) * 4294967296) | 0; }
-    var pr = [], n = 2;
-    while (pr.length < 64) {
-      var ist = true;
-      for (var i = 2; i * i <= n; i++) if (n % i === 0) { ist = false; break; }
-      if (ist) pr.push(n);
+    function frac(n, p) { return Math.floor((Math.pow(n, 1 / p) % 1) * 4294967296) | 0; }
+    var primes = [], n = 2;
+    while (primes.length < 64) {
+      var isPrime = true;
+      for (var i = 2; i * i <= n; i++) if (n % i === 0) { isPrime = false; break; }
+      if (isPrime) primes.push(n);
       n++;
     }
-    for (var j = 0; j < 64; j++) K256.push(wurzel(pr[j], 3));
+    for (var j = 0; j < 64; j++) K256.push(frac(primes[j], 3));
   })();
 
   function sha256bits(text) {
@@ -213,7 +213,7 @@
       H[0] = (H[0] + a) | 0; H[1] = (H[1] + bb) | 0; H[2] = (H[2] + cc) | 0; H[3] = (H[3] + d) | 0;
       H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
     }
-    /* Nur die fuehrenden Nullbits zaehlen, den Rest brauchen wir nicht. */
+    /* Only the leading zero bits count, we do not need the rest. */
     var bits = 0;
     for (i = 0; i < 8; i++) {
       var v = H[i] >>> 0;
@@ -224,34 +224,33 @@
     return bits;
   }
 
-  /* ---- Der Loeser, in Haeppchen ---------------------------------------------
-     ⚠️ NIE am Stueck. Zwei Sekunden Rechnen in einem Zug lassen jedes Spiel
-     ruckeln, und ausgerechnet direkt nach dem Laden. Also kleine Portionen
-     mit einem Taktgeber dazwischen, der den Bildaufbau nicht anhaelt.
-     MessageChannel statt setTimeout, weil setTimeout in einem Hintergrundtab
-     auf eine Sekunde gedrosselt wird und der Loeser dann nie fertig wird. */
-  function loese(aufgabe, bits, fertig) {
-    var n = 0, kanal = null;
-    try { kanal = new MessageChannel(); } catch (e) {}
-    /* ⚠️ Die Portion wird nach ZEIT bemessen, nicht nach Anzahl. Ein fester
-       Zaehler ist auf einem schnellen Rechner zu klein und auf einem alten
-       Telefon ein sichtbares Stocken. Zwoelf Millisekunden passen unter ein
-       Einzelbild bei 60 Hz. */
-    function portion() {
-      var bis = (Date.now ? Date.now() : +new Date()) + 12;
+  /* ---- The solver, in slices -------------------------------------------------
+     ⚠️ NEVER in one go. Two seconds of hashing in a single stretch make any
+     game stutter, and right after load of all moments. So small slices with
+     a scheduler in between that does not stall the frame. MessageChannel
+     instead of setTimeout, because setTimeout is throttled to one second in
+     a background tab and the solver would never finish. */
+  function solve(challenge, bits, done) {
+    var n = 0, channel = null;
+    try { channel = new MessageChannel(); } catch (e) {}
+    /* ⚠️ The slice is measured by TIME, not by count. A fixed counter is
+       too small on a fast machine and a visible hitch on an old phone.
+       Twelve milliseconds fit under a single frame at 60 Hz. */
+    function slice() {
+      var deadline = (Date.now ? Date.now() : +new Date()) + 12;
       do {
         for (var i = 0; i < 400; i++, n++) {
-          if (sha256bits(aufgabe + ':' + n) >= bits) { fertig(String(n)); return; }
+          if (sha256bits(challenge + ':' + n) >= bits) { done(String(n)); return; }
         }
-      } while ((Date.now ? Date.now() : +new Date()) < bis);
-      if (n > 4000000) return;   /* aussichtslos, dann eben ohne */
-      if (kanal) kanal.port2.postMessage(0); else setTimeout(portion, 0);
+      } while ((Date.now ? Date.now() : +new Date()) < deadline);
+      if (n > 4000000) return;   /* hopeless, then go without */
+      if (channel) channel.port2.postMessage(0); else setTimeout(slice, 0);
     }
-    if (kanal) kanal.port1.onmessage = portion;
-    portion();
+    if (channel) channel.port1.onmessage = slice;
+    slice();
   }
 
-  function oeffneSitzung() {
+  function openSession() {
     if (!KEY) return;
     api('/api/scores/session', {
       method: 'POST',
@@ -259,23 +258,23 @@
       body: JSON.stringify({ game: KEY })
     }).then(function (d) {
       if (!d || !d.ok || !d.session) return;
-      SITZUNG = d.session;
-      /* Die Aufgabe im Hintergrund loesen, lange bevor der erste Lauf endet.
-         Sie ist kein Muss: ohne sie sendet das Spiel langsamer, mehr nicht.
-         Wichtig wird sie, wenn viele Spieler hinter einer Adresse sitzen,
-         etwa in einer Schule. */
+      SESSION = d.session;
+      /* Solve the challenge in the background, long before the first run
+         ends. It is not a must: without it the game just posts slower.
+         It matters when many players sit behind one address, say in a
+         school. */
       if (d.challenge && d.difficulty) {
-        loese(d.challenge, d.difficulty, function (loesung) { ARBEIT = loesung; });
+        solve(d.challenge, d.difficulty, function (solution) { POW = solution; });
       }
     }).catch(function () {});
   }
-  oeffneSitzung();
+  openSession();
 
-  /* ---- Warp-Tueren ---------------------------------------------------------
-     Wir sprechen das Protokoll, das der Vibe Jam etabliert hat, statt ein
-     zweites zu erfinden: ?portal=true, ?ref=, plus username/color/speed in
-     der Adresszeile. Was dort fehlt, legen wir darueber: die Identitaet
-     ueberlebt den Sprung, damit aus einem Huepfer eine Reise wird. */
+  /* ---- Warp doors ------------------------------------------------------------
+     We speak the protocol the Vibe Jam established instead of inventing a
+     second one: ?portal=true, ?ref=, plus username/color/speed in the
+     address bar. What is missing there, we layer on top: the identity
+     survives the jump, so a hop becomes a journey. */
   function qp() {
     try { return new URLSearchParams(location.search); } catch (e) { return new URLSearchParams(''); }
   }
@@ -289,11 +288,11 @@
       color: q.get('color') || null,
       speed: q.get('speed') || null
     };
-    /* Der Punkt der ganzen Uebung: wer durch eine Tuer kommt, bleibt
-       derselbe Spieler. Ohne das ist jeder Sprung ein Neuanfang.
-       Der Name steht ohnehin schon in der Adresszeile, ihn fuer die
-       Sitzung zu uebernehmen legt also nichts Neues offen. Dauerhaft
-       gespeichert wird er nur unter derselben Bedingung wie sonst. */
+    /* The point of the whole exercise: whoever comes through a door stays
+       the same player. Without this, every jump is a fresh start.
+       The name already sits in the address bar anyway, so adopting it for
+       the visit reveals nothing new. It is persisted only under the same
+       condition as everywhere else. */
     if (a.fromPortal && a.username) {
       memName = a.username.slice(0, 24);
       if (mayStore()) {
@@ -305,11 +304,11 @@
 
   window.GS = {
     key: KEY,
-    /** Was der ankommende Spieler mitgebracht hat. Fuer Startbildschirm
-     *  ueberspringen, Farbe uebernehmen, Rueckweg anbieten. */
+    /** What the arriving player brought along. For skipping the title
+     *  screen, adopting the color, offering the way back. */
     arrival: arrival,
-    /** Schickt den Spieler weiter. Ohne Ziel entscheidet das Netz.
-     *  Gibt nichts zurueck, weil die Seite danach weg ist. */
+    /** Sends the player onward. Without a destination the network decides.
+     *  Returns nothing, because the page is gone afterwards. */
     warp: function (opts) {
       opts = opts || {};
       var q = new URLSearchParams();
@@ -321,12 +320,12 @@
       q.set('ref', opts.ref || location.origin + location.pathname);
       location.href = BASE + '/portal?' + q.toString();
     },
-    /** Punktestand abgeben. Gibt ein Promise mit dem Platz zurueck.
-     *  Felder nach der Definition auf /protocol: mode, unit, dir, rules
-     *  werden durchgereicht, wenn sie mitgegeben werden.
-     *  ⚠️ Nach dem Namen wird NUR gefragt, wenn die Abgabe interaktiv ist.
-     *  Ein Spiel, das am Game Over automatisch abgibt, darf dem Spieler
-     *  kein Eingabefenster vor die Nase setzen. */
+    /** Submit a score. Returns a promise with the rank.
+     *  Fields per the definition on /protocol: mode, unit, dir, rules are
+     *  passed through when provided.
+     *  ⚠️ The name is asked for ONLY when the submit is interactive.
+     *  A game that submits automatically at game over must not put an
+     *  input prompt in the player's face. */
     submit: function (score, opts) {
       opts = opts || {};
       var interactive = opts.show !== false;
@@ -341,26 +340,26 @@
       if (opts.unit)  body.unit  = String(opts.unit);
       if (opts.dir)   body.dir   = String(opts.dir);
       if (opts.rules) body.rules = String(opts.rules);
-      /* ⚠️ Die Version deines Spiels. Schick sie mit, immer.
-         Ein Rekord aus 0.39 ist nicht derselbe Rekord wie einer aus 0.40:
-         wer zwischendurch die Balance aendert, macht alle alten Werte zu
-         Werten eines anderen Spiels. Ohne dieses Feld merkt das niemand.
-         Setzbar per Aufruf oder ein fuer alle Mal am Skript-Tag:
+      /* ⚠️ The version of YOUR game. Send it, always.
+         A record from 0.39 is not the same record as one from 0.40:
+         change the balance in between and every old value belongs to a
+         different game. Without this field, nobody notices.
+         Settable per call or once and for all on the script tag:
            <script src=".../gs.js" data-key="..." data-version="1.4.0"></script> */
       var ver = opts.version || (self && self.dataset && self.dataset.version);
       if (ver) body.version = String(ver);
-      /* Die Sitzung, damit die Dauer aus unserer Uhr kommt. */
-      if (SITZUNG) body.session = SITZUNG;
-      if (ARBEIT) body.pow = ARBEIT;
-      var kopf = { 'Content-Type': 'application/json' };
-      /* Mit Marke bestimmt die MARKE den Namen, nicht das Feld `player`.
-         Der Server ueberschreibt ihn, damit in der Liste nie zwei Namen
-         fuer dieselbe Person stehen. */
-      var tok = marke();
-      if (tok) kopf['X-HISCORE-Player'] = tok;
+      /* The session, so the duration comes from our clock. */
+      if (SESSION) body.session = SESSION;
+      if (POW) body.pow = POW;
+      var headers = { 'Content-Type': 'application/json' };
+      /* With a token, the TOKEN decides the name, not the `player` field.
+         The server overrides it, so the board never shows two names for
+         the same person. */
+      var tok = token();
+      if (tok) headers['X-HISCORE-Player'] = tok;
       return api('/api/scores', {
         method: 'POST',
-        headers: kopf,
+        headers: headers,
         body: JSON.stringify(body)
       }).then(function (d) {
         if (d.ok && opts.show !== false) show();
@@ -369,31 +368,31 @@
     },
     show: show,
     hide: hide,
-    /** Uhr fuer die Laufzeit neu starten, z.B. beim Spielstart.
-     *  Die Sitzung laeuft weiter: sie misst die Zeit im Spiel, nicht die
-     *  eines einzelnen Laufs. Genau das macht sie als Zahl interessant. */
+    /** Restart the run clock, e.g. when a run begins.
+     *  The session keeps going: it measures time in the game, not the
+     *  length of a single run. That is exactly what makes it interesting
+     *  as a number. */
     reset: function () { started = Date.now(); },
-    /** Die laufende Sitzung, falls der Server eine vergeben hat. */
-    session: function () { return SITZUNG; },
+    /** The current session, if the server issued one. */
+    session: function () { return SESSION; },
     player: player,
 
-    /** Ist dieser Browser mit einem Konto verbunden?
-     *  Fuer den Knopf im Spiel: „Als du selbst spielen" oder eben nicht. */
-    connected: function () { return !!marke(); },
+    /** Is this browser connected to an account?
+     *  For the in-game button: "Play as yourself" or not. */
+    connected: function () { return !!token(); },
 
-    /** Schickt den Spieler zum Bestaetigen und danach hierher zurueck.
-     *  Die Seite ist nach dem Aufruf weg, es gibt also nichts zurueck.
-     *  ⚠️ Nur auf eine echte Klickhandlung hin aufrufen. Eine Weiterleitung
-     *  beim Laden reisst den Spieler aus dem Spiel. */
-    connect: function (rueck) {
-      var ziel = rueck || (location.origin + location.pathname + location.search);
+    /** Sends the player off to confirm and back here afterwards.
+     *  The page is gone after the call, so nothing is returned.
+     *  ⚠️ Call this only on a real click. A redirect on load rips the
+     *  player out of the game. */
+    connect: function (returnUrl) {
+      var target = returnUrl || (location.origin + location.pathname + location.search);
       location.href = BASE + '/connect?game=' + encodeURIComponent(KEY) +
-        '&return=' + encodeURIComponent(ziel);
+        '&return=' + encodeURIComponent(target);
     },
 
-    /** Verbindung in diesem Browser loesen. Die Marke bleibt serverseitig
-     *  gueltig, bis sie im Konto zurueckgezogen wird: hier vergisst nur
-     *  dieses Geraet. */
+    /** Disconnect in this browser. The token stays valid server-side until
+     *  it is revoked in the account: only this device forgets. */
     disconnect: function () {
       memTok = null;
       try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
